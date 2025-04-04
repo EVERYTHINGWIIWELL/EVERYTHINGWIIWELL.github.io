@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>瑞幸咖啡全国门店分布</title>
+
+    <style>
+        html, body {
+          padding: 0;
+          margin: 0;
+          height: 100%;
+          width: 100%;
+          font-family: "Microsoft YaHei", sans-serif;
+        }
+        
+        .container {
+          display: flex;
+          flex-direction: column;
+          height: 100vh;
+        }
+        
+        header {
+          background: #2c3e50;
+          color: #ecf0f1;
+          padding: 0.5rem 1rem;
+          text-align: center;
+        }
+        header h1 {
+          font-size: 1.3em;
+          margin: 0.3rem 0;
+        }
+        header p {
+          font-size: 0.85em;
+          margin: 0.2rem 0;
+        }
+        
+        .map-container {
+          flex: 1;
+          position: relative;
+        }
+        
+
+        .basemap-gallery {
+          height: 100px;  
+          background: #ffffff;
+          padding: 0.8rem;
+          display: flex;
+          gap: 1.2rem;
+          overflow-x: auto;
+          border-top: 2px solid #e0e0e0;
+        }
+
+        .basemap-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.4rem;  
+          cursor: pointer;
+          padding: 0.4rem;
+          transition: all 0.2s;
+          min-width: 90px;  
+        }
+
+        .basemap-item:hover {
+          background: #f5f5f5;
+          border-radius: 6px;
+        }
+
+        .basemap-item.active {
+          background: #eef4ff;
+        }
+
+        .basemap-thumb {
+          width: 80px;   
+          height: 50px;
+          border: 2px solid transparent;
+          border-radius: 4px;
+          object-fit: cover;
+          transition: all 0.2s;
+        }
+
+        .basemap-item.active .basemap-thumb {
+          border-color: #2c3e50;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .basemap-label {
+          font-size: 0.75em;  
+          color: #4a4a4a;
+          white-space: nowrap;
+          padding: 0 0.2rem;
+        }
+
+        .basemap-item.active .basemap-label {
+          color: #2c3e50;
+          font-weight: 600;
+        }
+
+        arcgis-map {
+          height: 100%;
+          width: 100%;
+        }
+    </style>
+
+    <script type="module" src="https://js.arcgis.com/calcite-components/3.0.3/calcite.esm.js"></script>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.32/"></script>
+    <script type="module" src="https://js.arcgis.com/map-components/4.32/arcgis-map-components.esm.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>瑞幸咖啡各省门店数量统计</h1>
+            <p>数据来源：GeoScene Online</p>
+        </header>
+
+        <div class="map-container">
+            <arcgis-map id="mainMap" basemap="streets-vector">
+                <arcgis-layer-list position="top-right"></arcgis-layer-list>
+                <arcgis-legend position="bottom-right"></arcgis-legend>
+                <arcgis-search position="top-left"></arcgis-search>
+                <arcgis-scale-bar 
+                    position="bottom-left"
+                    bar-style="line"
+                    unit="metric">
+                </arcgis-scale-bar>
+            </arcgis-map>
+        </div>
+
+       
+        <div class="basemap-gallery">
+            <div class="basemap-item active" onclick="changeBasemap('streets-vector')">
+                <img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/5/23/25" 
+                     class="basemap-thumb">
+                <span class="basemap-label">矢量街道图</span>
+            </div>
+
+            <div class="basemap-item" onclick="changeBasemap('satellite')">
+                <img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/5/23/25"
+                     class="basemap-thumb">
+                <span class="basemap-label">卫星影像</span>
+            </div>
+
+            <div class="basemap-item" onclick="changeBasemap('topo')">
+                <img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/5/23/25"
+                     class="basemap-thumb">
+                <span class="basemap-label">地形图</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        require(["esri/layers/FeatureLayer"], (FeatureLayer) => {
+            const mapElement = document.getElementById("mainMap");
+            
+            mapElement.addEventListener("arcgisViewReadyChange", (event) => {
+                const view = event.target.view;
+
+                const provinceLayer = new FeatureLayer({
+                    url: "https://www.geosceneonline.cn/server/rest/services/Hosted/瑞幸分布地图/FeatureServer/0",
+                    title: "各省瑞幸咖啡门店数量分布图",
+                    popupTemplate: {
+                        title: "{name}", 
+                        content: [{
+                            type: "fields",
+                            fieldInfos: [{
+                                fieldName: "瑞幸",  
+                                label: "门店数量"
+                            }]
+                        }]
+                    }
+                });
+
+                mapElement.map.add(provinceLayer);
+
+                document.querySelectorAll("arcgis-layer-list, arcgis-legend, arcgis-scale-bar, arcgis-search")
+                      .forEach(widget => widget.view = view);
+
+                view.goTo({
+                    center: [105, 37.5],
+                    zoom: 3
+                }).catch(error => console.error("视图初始化失败:", error));
+            });
+        });
+
+        
+        function changeBasemap(basemapId) {
+            const items = document.querySelectorAll('.basemap-item');
+            items.forEach(item => item.classList.remove('active'));
+            
+            const activeItem = [...items].find(item => 
+                item.getAttribute('onclick').includes(basemapId)
+            );
+            activeItem.classList.add('active');
+            
+            document.getElementById("mainMap").basemap = basemapId;
+        }
+    </script>
+</body>
+</html>
